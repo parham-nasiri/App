@@ -2,6 +2,7 @@ const httpStatus = require('http-status');
 const authUser = require('../../middlewarae/authUser');
 const ApiError = require("../../utils/ApiError");
 const Test = require('./test');
+const UserQuizProgress = require('../userQuizProgress/userQuizProgress');
 const services = require('./test.services')
 const genericResponse = require('../../utils/genericResponse');
 const logger = require('../../config/logger');
@@ -39,14 +40,29 @@ async function answerTest (req,res,next){
     }
     const realAnswer = await services.findAnswer({testId})
     if(answer == realAnswer){
-       const userPoint = await services.getPoint({ _id: userId })
-       if(userPoint==0){
-        throw new ApiError(httpStatus.BAD_REQUEST, 'userPoint error');
-        }
-        res.send(genericResponse({success:true,data:{userPoint}}))
-    }
+       //const userPoint = await services.getPoint({ _id: userId })
+       const Progress = await UserQuizProgress.findOne({ userId, test: { $elemMatch: { testId } } });
+       if (!Progress) {
+       const Progress = new UserQuizProgress({
+        userId,
+        test: [{
+            testId: testId,
+            firstAnswer: true,
+            isCorrect: true,
+            isSeen:true
+        }]})
+         await Progress.save();
+         res.status(httpStatus.OK).send(genericResponse({ success: true, data: { message: 'Correct answer' } }));}
+        else{
+            Progress.firstAnswer = false;
+            Progress.isCorrect = true;
+        }}
     else{
-        throw new ApiError(httpStatus.BAD_REQUEST, 'Wrong answer')
+        const Progress = await UserQuizProgress.findOne({ userId, test: { $elemMatch: { testId } } });
+        if (!Progress) {
+            const Progress = new UserQuizProgress({userId,test: [{testId: testId,firstAnswer: false,isCorrect: false,isSeen:true}]})
+            await Progress.save();}
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Wrong answer', { data: { correctAnswer: realAnswer } });
     }
 }
 catch (err) {

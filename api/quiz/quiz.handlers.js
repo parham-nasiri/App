@@ -3,6 +3,7 @@ const ApiError = require("../../utils/ApiError");
 const services = require("./quiz.services");
 const Quiz = require('./quiz');
 const User = require('../user/user');
+const handlers = require('../test/test.handlers');
 const Submission = require('../Submission/Submission');
 const genericResponse = require('../../utils/genericResponse');
 const logger = require('../../config/logger');
@@ -39,7 +40,7 @@ async function createQuiz(req, res, next) {
   }
 }
 
-async function submitQuiz(req, res, next) {
+/*async function submitQuiz(req, res, next) {
   try {
     const userId = req.user._id;
     const { quizId, answers } = req.body;
@@ -98,6 +99,39 @@ async function submitQuiz(req, res, next) {
   } catch (err) {
     next(err);
   }
+}
+  */
+async function startQuiz(req, res, next) {
+  try {
+    const { quizId } = req.body;
+
+    if (!quizId) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'quizId is required');
+    }
+    const quiz = await Quiz.findById(quizId).populate('tests');
+    if (!quiz) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Quiz not found');
+    }
+    const allTests = quiz.tests;
+    if (allTests.length === 0) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No questions found in this quiz');
+    }
+    const randomIndex = Math.floor(Math.random() * allTests.length);
+    const randomTest = allTests[randomIndex];
+    res.status(200).send(genericResponse({success: true,data: {testId: randomTest._id,title: randomTest.title,answersTitle: randomTest.answersTitle}
+      })
+    );
+
+  } catch (err) {
+    next(err);
+  }
+}
+async function answerQuiz(req, res, next) {
+  const {quizId,testId,answer} = req.body
+  const userId = req.user._id;
+  
+
+  
 }
 async function listQuiz(req,res,next) {
     try {
