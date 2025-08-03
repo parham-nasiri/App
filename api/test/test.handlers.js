@@ -2,7 +2,7 @@ const httpStatus = require('http-status');
 const authUser = require('../../middlewarae/authUser');
 const ApiError = require("../../utils/ApiError");
 const Test = require('./test');
-const UserQuizProgress = require('../userQuizProgress/userQuizProgress');
+const TestProgress = require('../testProgress/testProgress');
 const services = require('./test.services')
 const genericResponse = require('../../utils/genericResponse');
 const logger = require('../../config/logger');
@@ -28,50 +28,78 @@ res.status(200).send(genericResponse({ success: true, data: newTest._id }));
         res.status(httpStatus.INTERNAL_SERVER_ERROR).json(genericResponse(false, error.message || 'Internal Server Error'));
     }
 }
-async function answerTest (req,res,next){
- try {
+async function answerTest(req, res, next) {
+  try {
     const userId = req.user._id;
-    if(!userId){
+    if (!userId) {
       throw new ApiError(httpStatus.UNAUTHORIZED, 'User ID not found from token');
     }
-    const {answer,testId} = req.body
-    if(!testId){
-        throw new ApiError(httpStatus.BAD_REQUEST, 'test ID not provided');
+
+    const { answer, testId } = req.body;
+    if (!testId) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'test ID not provided');
     }
-    const realAnswer = await services.findAnswer({testId})
-    if(answer == realAnswer){
-       //const userPoint = await services.getPoint({ _id: userId })
-       const Progress = await UserQuizProgress.findOne({ userId, test: { $elemMatch: { testId } } });
-       if (!Progress) {
-       const Progress = new UserQuizProgress({
-        userId,
-        test: [{
-            testId: testId,
+
+    const realAnswer = await services.findAnswer({ testId });
+
+    const existingProgress = await TestProgress.findOne({ userId });
+
+    if (answer == realAnswer) {
+      if (!existingProgress) {
+        const newProgress = new TestProgress({
+          userId,
+          test: [{
+            testId,
             firstAnswer: true,
             isCorrect: true,
-            isSeen:true
-        }]})
-         await Progress.save();
-         res.status(httpStatus.OK).send(genericResponse({ success: true, data: { message: 'Correct answer' } }));}
-        else{
-            Progress.firstAnswer = false;
-            Progress.isCorrect = true;
-        }}
-    else{
-        const Progress = await UserQuizProgress.findOne({ userId, test: { $elemMatch: { testId } } });
-        if (!Progress) {
-            const Progress = new UserQuizProgress({userId,test: [{testId: testId,firstAnswer: false,isCorrect: false,isSeen:true}]})
-            await Progress.save();}
-        throw new ApiError(httpStatus.BAD_REQUEST, 'Wrong answer', { data: { correctAnswer: realAnswer } });
+            isSeen: true
+          }]
+        });
+        await newProgress.save();
+        return null;
+      } else {
+        existingProgress.test.push({
+          testId,
+          isCorrect: true,
+          firstAnswer: false,
+          isSeen: true
+        });
+        await existingProgress.save();
+        return null;
+      }
+    } else {
+      if (!existingProgress) {
+        const newProgress = new TestProgress({
+          userId,
+          test: [{
+            testId,
+            firstAnswer: false,
+            isCorrect: false,
+            isSeen: true
+          }]
+        });
+        await newProgress.save();
+        return realAnswer;
+      } else {
+        existingProgress.test.push({
+          testId,
+          isCorrect: false,
+          firstAnswer: false,
+          isSeen: true
+        });
+        await existingProgress.save();
+        return realAnswer;
+      }
     }
+
+  } catch (err) {
+    logger.error(`[answerTest] Answer Test failed with error`, err);
+    res
+      .status(err.statusCode || httpStatus.INTERNAL_SERVER_ERROR)
+      .send(genericResponse({ success: false, errorMessage: err.message }));
+  }
 }
-catch (err) {
-  logger.error(`[answerTest] answerTest failed with error`, err);
-  res.status(err.statusCode || 500).send(
-    genericResponse({ success: false, errorMessage: err.message })
-  );
-}
-}
+
 async function listTests(req,res,next) {
     try {
         const tests = await services.listTestsQeury();

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const userQuizProgressSchema = new mongoose.Schema({
+const testProgressSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   test: [{
     testId: { type: mongoose.Schema.Types.ObjectId, ref: 'Test', required: true },
@@ -9,8 +9,7 @@ const userQuizProgressSchema = new mongoose.Schema({
     isCorrect: { type: Boolean, default: false }
   }]
 });
+testProgressSchema.index({ userId: 1 }, { unique: true });
 
-userQuizProgressSchema.index({ userId: 1 }, { unique: true });
-
-const UserQuizProgress = mongoose.model("UserQuizProgress", userQuizProgressSchema);
-module.exports = UserQuizProgress;
+const TestProgress = mongoose.model("TestProgress", testProgressSchema);
+module.exports = TestProgress;

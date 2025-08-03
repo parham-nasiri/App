@@ -4,17 +4,27 @@ const createQuiz = {
   body: Joi.object().keys({
     title: Joi.string().min(3).max(200).required(),
     tests: Joi.array().items(Joi.string().length(24)).min(1).required(),
+    number: Joi.number().required()
   }),
 };
 
-const submitQuiz = {
+const startQuiz = {
+  body: Joi.object().keys({
+    quizId: Joi.string().length(24).required()
+  }),
+};
+const answerQuiz = {
   body: Joi.object().keys({
     quizId: Joi.string().length(24).required(),
-    answers: Joi.array().items(Joi.object({testId: Joi.string().length(24).required(),
-    selectedOption: Joi.number().min(1).max(4).required()}))
-      .min(1)
-      .required(),
+    testId: Joi.string().length(24).required(),
+    answer: Joi.number().min(1).max(4).required()
+  }),
+};
+const answerPreviewQuiz = {
+  body: Joi.object().keys({
+    testId: Joi.string().length(24).required(),
+    answer: Joi.number().min(1).max(4).required()
   }),
 };
 
-module.exports = { createQuiz, submitQuiz };
+module.exports = { createQuiz, startQuiz,answerQuiz,answerPreviewQuiz };
