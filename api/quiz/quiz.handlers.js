@@ -12,25 +12,25 @@ const logger = require('../../config/logger');
 
 async function createQuiz(req, res, next) {
   try {
-    const { title, tests,number } = req.body;
+    const { title, tests,number ,teacherQuiz} = req.body;
 
     if (!title || !tests || !Array.isArray(tests) || tests.length === 0|| !number) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Title and tests are required');
     }
 
-    const quiz = await services.findQuiz({ title }); // ✅ اضافه کردن await
+    const quiz = await services.findQuiz({ title });
 
     if (quiz) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Quiz with this title already exists');
     }
+    if(teacherQuiz){
     const duplicateNumber = await Quiz.findOne({ number });
 
     if (duplicateNumber) {
       throw new ApiError(httpStatus.CONFLICT, `Quiz number ${number} already exists`);
     }
     const newQuiz = new Quiz({title,tests,createdBy: req.user._id, number });
-
-    await newQuiz.save();
+     await newQuiz.save();
 
     res.status(200).send(
       genericResponse({
@@ -38,67 +38,64 @@ async function createQuiz(req, res, next) {
         data: { quizId: newQuiz._id, title: newQuiz.title ,number: newQuiz.number}
       })
     );
-  } catch (error) {
+    
+  }
+  else{
+    const newQuiz = new Quiz({title,tests,createdBy: req.user._id});
+    await newQuiz.save();
+    res.status(200).send(genericResponse({success: true,data: { quizId: newQuiz._id, title: newQuiz.title}}));
+    }
+
+  } 
+  catch (error) {
     logger.error(error);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       genericResponse(false, error.message || 'Internal Server Error')
     );
   }
 }
-
-/*async function submitQuiz(req, res, next) {
+async function startMainQuiz(req, res, next) {
   try {
     const userId = req.user._id;
-    const { quizId, answers } = req.body;
-
-    if (!quizId || !Array.isArray(answers)) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'quizId and answers are required');
+    if (!userId) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'User ID not found from token');
     }
 
-    const existingSubmission = await Submission.findOne({ quizId, studentId: userId });
-    if (existingSubmission) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'You have already submitted this quiz');
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
     }
 
-    const quiz = await Quiz.findById(quizId).populate('tests');
+    const ranked = user.ranked;
+    const quiz = await Quiz.findOne({ number: ranked }).populate('tests');
     if (!quiz) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Quiz not found');
     }
 
-    let correctAnswersCount = 0;
-    const answerMap = new Map();
-    answers.forEach(ans => {
-      answerMap.set(ans.testId.toString(), ans.selectedOption);
+    // ایجاد یک submission جدید
+    const submission = new Submission({
+      quizId: quiz._id,
+      userId: userId,
+      score: user.point || 0,
+      finished: false
     });
+    await submission.save();
 
-    for (const test of quiz.tests) {
-      const userAnswer = answerMap.get(test._id.toString());
-      if (userAnswer !== undefined && userAnswer === test.answer) {
-        correctAnswersCount++;
-      }
+    const allTests = quiz.tests;
+    if (allTests.length === 0) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'No questions found in this quiz');
     }
 
-    const score = correctAnswersCount;
-
-    const newSubmission = new Submission({
-      quizId,
-      studentId: userId,
-      answers,
-      score
-    });
-
-    await newSubmission.save();
-
-    const user = await User.findById(userId);
-    user.point += score;
-    await user.save();
+    const randomIndex = Math.floor(Math.random() * allTests.length);
+    const randomTest = allTests[randomIndex];
 
     res.status(200).send(
       genericResponse({
         success: true,
         data: {
-          message: 'Quiz submitted successfully',
-          score
+          testId: randomTest._id,
+          title: randomTest.title,
+          answersTitle: randomTest.answersTitle
         }
       })
     );
@@ -106,11 +103,17 @@ async function createQuiz(req, res, next) {
     next(err);
   }
 }
-  */
-async function startQuiz(req, res, next) {
+async function startTeacherQuiz(req, res, next) {
   try {
     const { quizId } = req.body;
-
+    const userId = req.user._id;
+    if (!userId) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'User ID not found from token'); 
+    }
+    const user = await User.findById(userId);
+    if (!user) { 
+      throw new ApiError(httpStatus.UNAUTHORIZED, 'User not found');
+    }
     if (!quizId) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'quizId is required');
     }
@@ -118,6 +121,8 @@ async function startQuiz(req, res, next) {
     if (!quiz) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Quiz not found');
     }
+    const submission = new Submission({quizId,studentId: userId,score: user.point, finished: false});
+    await submission.save();
     const allTests = quiz.tests;
     if (allTests.length === 0) {
       throw new ApiError(httpStatus.NOT_FOUND, 'No questions found in this quiz');
@@ -149,7 +154,9 @@ async function answerQuiz(req, res, next) {
     req.body.answer = answer;
     req.body.testId = testId;
     const result  = await handlers.answerTest(req, res, next);
-
+const submission = await Submission.findOne({ quizId, studentId: userId });
+    if (!submission) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Submission not found for this quiz');}
 const progress = await TestProgress.findOne({
   userId,
   test: { $elemMatch: { testId: testId } }
@@ -157,13 +164,17 @@ const progress = await TestProgress.findOne({
     if (!progress) {
       throw new ApiError(httpStatus.NOT_FOUND, 'Progress not found for this user and test');
     }
+      
 
     if (progress.isCorrect && progress.firstAnswer)
-       {user.point += 10;await user.save();}
+       {user.point += 10;await user.save();
+        submission.score += 10;await submission.save();
+       }
     const seenTestIds = await services.getSeenTestIds(userId,testId);
     const quiz = await services.getQuizWithTests(quizId);
     const nextTest = services.getRandomUnseenTest(quiz.tests, seenTestIds);
     if (!nextTest) {
+      submission.finished = true ;await submission.save();
       if(!result){
         return res.status(httpStatus.OK||200).send(
         genericResponse({success: true, data: {message: 'Quiz completed successfully'}})
@@ -175,11 +186,11 @@ const progress = await TestProgress.findOne({
     }
       if(!result){
         return res.status(httpStatus.OK||200).send(
-        genericResponse({success: true,data: {testId: nextTest._id,title: nextTest.title, answersTitle: nextTest.answersTitle,result: 'true answer' }})
+        genericResponse({success: true,data: {quizId,testId: nextTest._id,title: nextTest.title, answersTitle: nextTest.answersTitle,result: 'true answer' }})
         );
       }
       return res.status(httpStatus.OK||200).send(
-      genericResponse({success: true,data: {testId: nextTest._id,title: nextTest.title, answersTitle: nextTest.answersTitle,result: result }})
+      genericResponse({success: true,data: {quizId,testId: nextTest._id,title: nextTest.title, answersTitle: nextTest.answersTitle,result: result }})
       );
     
   } 
@@ -187,8 +198,7 @@ const progress = await TestProgress.findOne({
   logger.info(`[login] login failed with error`,err);
         next(err)
 }
-}  
-
+}
 async function previewQuiz(req, res, next) {
   try {
     const userId = req.user._id;
@@ -283,4 +293,4 @@ async function listQuiz(req,res,next) {
         res.status(err.statusCode).send(genericResponse({success:false,errorMessage:err.message}))
     }
 }
-module.exports = { createQuiz,startQuiz,answerQuiz,listQuiz,previewQuiz,answerPreviewQuiz}
+module.exports = { createQuiz,startTeacherQuiz,answerQuiz,listQuiz,previewQuiz,answerPreviewQuiz}

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('./user');
 const Test = require('./userTest');
+const { boolean, required } = require('joi');
 
 const quizSchema = new mongoose.Schema({
   title: {
@@ -13,19 +14,18 @@ const quizSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+
   number:{
     type: Number,
-    required: true,
-    Unique: true
   },
   tests: [{
   type: mongoose.Schema.Types.ObjectId,
-  ref: 'userTest'  // دقیقاً مطابق اسم مدل
-}]
-,
-}, {
+  ref: 'userTest'
+  }],
+  },
+  {
   timestamps: true,
-});
+  });
 
 quizSchema.methods.toJSON = function () {
   const quiz = this;

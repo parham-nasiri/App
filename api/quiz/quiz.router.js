@@ -2,7 +2,7 @@ const express = require('express');
 const validator = require('./quiz.validator');
 const validate = require('../../middlewarae/validate')
 const handlers = require('./quiz.handlers')
-const authUser = require('../../middlewarae/authUser');
+const {authUser} = require('../../middlewarae/authUser');
 const router = express.Router()
 router.post('/createQuiz',authUser,validate(validator.createQuiz),handlers.createQuiz);
 router.post('/startQuiz',authUser,validate(validator.startQuiz),handlers.startQuiz);

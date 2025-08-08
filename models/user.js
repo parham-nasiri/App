@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
-const { array } = require('joi');
+const { array, types } = require('joi');
 const MAX_LOGIN_ATTEMPT=5;
 // Define schema
 const userSchema = new mongoose.Schema({
@@ -47,6 +47,18 @@ const userSchema = new mongoose.Schema({
         required:true,
         default:0
     },
+    ranked:{
+        type:Number,
+        default:0
+    },
+    followers:{
+        type:Array,
+        default:[]
+    },
+    followings:{
+        type:Array,
+        default:[]
+    },
     point:{
         type:Number,
         required:true,
@@ -71,15 +83,6 @@ userSchema.methods.toJSON = function () {
     delete userObject.password;
     return userObject;
 };
-//userSchema.methods.jsonwebtoken = async function(){
-  //  const user = this
-//const token = jwt.sign({ _id: user._id.toString() },
- // process.env.JWT_SECRET
-//);
-  //  user.tokens = user.tokens.concat({token})
-   // await user.save()
-   // return token  
-//}
 userSchema.methods.generateAuthToken = async function () {
     const user = this;
     const token = jwt.sign({ _id: user._id.toString() }, "elephent");

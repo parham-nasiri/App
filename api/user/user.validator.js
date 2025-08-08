@@ -1,16 +1,21 @@
-const joi = require('joi');
+const Joi = require('joi');
 
 const createUser = {
-    body: joi.object().keys({
-        username: joi.string().min(3).max(30).required(),
-        email: joi.string().email().required(),
-        password: joi.string().min(6).max(128).required(),
+    body: Joi.object().keys({
+        username: Joi.string().min(3).max(30).required(),
+        email: Joi.string().email().required(),
+        password: Joi.string().min(6).max(128).required(),
     })
 }
 const login = {
-    body:joi.object().keys({
-    email:joi.string().email().message('invalid email').trim().required(),
-    password : joi.string().trim().required()
+    body:Joi.object().keys({
+    email:Joi.string().email().message('invalid email').trim().required(),
+    password : Joi.string().trim().required()
+    })
+}
+const getUserById = {
+    body:Joi.object().keys({
+    followingUserId:Joi.array().items(Joi.string().hex().length(24).message("invalid User Id")).required()
     })
 }
 
@@ -20,4 +25,5 @@ const login = {
 
 
 
-module.exports = {login,createUser}
+
+module.exports = {login,createUser,getUserById}

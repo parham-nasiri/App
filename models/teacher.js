@@ -7,7 +7,7 @@ const httpStatus = require('http-status');
 const { array } = require('joi');
 const MAX_LOGIN_ATTEMPT=5;
 const teacherSchema = new mongoose.Schema({
-    teachersName: {
+    teacherName: {
         type: String,
         unique: true,
         required: true,
@@ -54,21 +54,12 @@ localField:'_id',
 foreignField:'userId'
 })*/
 
-userSchema.methods.toJSON = function () {
+teacherSchema.methods.toJSON = function () {
     const teacher = this;
     const teacherObject = teacher.toObject();
     delete teacherObject.password;
     return teacherObject;
 };
-//userSchema.methods.jsonwebtoken = async function(){
-  //  const user = this
-//const token = jwt.sign({ _id: user._id.toString() },
- // process.env.JWT_SECRET
-//);
-  //  user.tokens = user.tokens.concat({token})
-   // await user.save()
-   // return token  
-//}
 teacherSchema.methods.generateAuthToken = async function () {
     const teacher = this;
     const token = jwt.sign({ _id: teacher._id.toString() }, "elephent");

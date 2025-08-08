@@ -4,7 +4,7 @@ const ApiError = require("../../utils/ApiError");
 const User = require('./user');
 const genericResponse = require('../../utils/genericResponse');
 const logger = require('../../config/logger');
-const {getUserByEmailOrUsername,listUsersQeury,getUsersByIds} = require('./user.services')
+const {getUserByEmailOrUsername,listUsersQeury,getUsersByIds,getUserByIds,followUser} = require('./user.services')
 async function login(req,res,next) {
     try {
         
@@ -80,9 +80,33 @@ async function listUser(req,res,next) {
     }
 }
     */
+async function follow(req,res,next) {
+    const payload = req.body
+    const followerUser = new User(req.user)
+    try {
+        let{followingUserId} = payload;
+        if(followingUserId===followerUser?.id){
+            throw new ApiError (httpStatus.BAD_REQUEST, "You cannot follow yourself");
+        }
+        const followingUser = await getUserByIds({id:followingUserId});
+        if(!followingUser){
+            throw new ApiError(httpStatus.NOT_FOUND,"Following user not found");
+        }
+        await followUser({followerUser,followingUser});
+        res.send(genericResponse({success:true,data:{message:"Followed successfully"}}));
+    } 
+    catch (err) {
+        logger.error(`[follow] Follow user failed with error`, err);
+        res.status(err.statusCode || 500).send(genericResponse({success:false,errorMessage:err.message}));
+    }
+
+
+
+
+}
 
 
 
 
 
-module.exports = {login,createUser,listUser}
+module.exports = {login,createUser,listUser,follow}
