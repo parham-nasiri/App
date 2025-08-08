@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema({
     },
     ranked:{
         type:Number,
-        default:0
+        default:3
     },
     followers:{
         type:Array,

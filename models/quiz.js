@@ -1,8 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('./user');
 const Test = require('./userTest');
-const { boolean, required } = require('joi');
-
+const Teacher = require('./teacher');
 const quizSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -11,7 +10,7 @@ const quizSchema = new mongoose.Schema({
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Teacher',
     required: true,
   },
 

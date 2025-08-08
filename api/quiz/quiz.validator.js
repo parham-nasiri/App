@@ -4,7 +4,7 @@ const createQuiz = {
   body: Joi.object().keys({
     title: Joi.string().min(3).max(200).required(),
     tests: Joi.array().items(Joi.string().length(24)).min(1).required(),
-    number: Joi.number().required()
+    number: Joi.number()
   }),
 };
 

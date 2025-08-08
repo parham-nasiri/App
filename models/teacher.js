@@ -68,7 +68,6 @@ teacherSchema.methods.generateAuthToken = async function () {
     await teacher.save();
     return token;
 };
-
 // Hash password before saving
 teacherSchema.pre('save', async function (next) {
     const teacher = this;

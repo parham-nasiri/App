@@ -7,8 +7,6 @@ const logger = require('../../config/logger');
 const {getTeacherByEmailOrteacherName,listTeachersQeury,getteachersByIds} = require('./teacher.services')
 async function login(req,res,next) {
     try {
-        user
-    
     const{email,password} = req.body;
     const teacher  = await Teacher.findByCredentials(email,password);
     if (!teacher){
@@ -25,27 +23,31 @@ async function login(req,res,next) {
 
 
 
-async function createTeacher(req,res,next) {
-    try{
-        const {email,teacherName,password} = req.body;
-        const newTeacher = new teacher({email,teacherName,password});
-        const teacher = await getTeacherByEmailOrteacherName({email,teacherName});
-        if(teacher?.teacherName ==teacherName){
-            throw new ApiError(httpStatus.BAD_REQUEST,"this teacherName is already taken")
+async function createTeacher(req, res, next) {
+    try {
+        const { email, teacherName, password } = req.body;
+
+        // استفاده از مدل با حرف بزرگ
+        const existingTeacher = await getTeacherByEmailOrteacherName({ email, teacherName });
+
+        if (existingTeacher?.teacherName === teacherName) {
+            throw new ApiError(httpStatus.BAD_REQUEST, "this teacherName is already taken");
         }
-        if(teacher?.email ==email){
-            throw new ApiError(httpStatus.BAD_REQUEST,"this email is already taken")
+        if (existingTeacher?.email === email) {
+            throw new ApiError(httpStatus.BAD_REQUEST, "this email is already taken");
         }
+
+        const newTeacher = new Teacher({ email, teacherName, password });
         await newTeacher.save();
+
         const token = await newTeacher.generateAuthToken();
-        res.send(genericResponse({data:{teacher:newTeacher,token:token}}));
-    }
-    catch(err){
+        res.send(genericResponse({ data: { teacher: newTeacher, token: token } }));
+    } catch (err) {
         logger.error(`[createTeacher] Create Teacher failed with error`, err);
-       // res.status(err.statusCode || 500).send(genericResponse({success:false,errorMessage:err.message}))
         next(err);
     }
 }
+
 
 
 async function listTeacher(req,res,next) {
